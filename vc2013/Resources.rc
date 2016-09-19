@@ -1,0 +1,7 @@
+#include "resource.h"
+
+1                       ICON                    "..\\resources\\cinder_app_icon.ico"
+
+
+
+101              SOUND                   "../data/SampleSong.mp3"
