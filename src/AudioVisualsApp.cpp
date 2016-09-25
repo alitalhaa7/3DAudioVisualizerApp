@@ -96,7 +96,7 @@ class AudioVisualsApp : public App {
 
 
 	bool spacebuttonpressed=false;
-
+	bool songdragged = false;
 
 private:
 	gl::GlslProgRef mRenderProg;
@@ -215,8 +215,8 @@ void AudioVisualsApp::setup()
 	auto ctx = audio::Context::master();
 	sourceFile = audio::load(loadResource(music), ctx->getSampleRate());
 
-	audio::BufferRef buffer = sourceFile->loadBuffer();
-	mBufferPlayerNode = ctx->makeNode(new audio::BufferPlayerNode(buffer));
+	//audio::BufferRef buffer = sourceFile->loadBuffer();
+	/*mBufferPlayerNode = ctx->makeNode(new audio::BufferPlayerNode(buffer));
 
 
 
@@ -225,6 +225,7 @@ void AudioVisualsApp::setup()
 	mMonitorSpectralNode = ctx->makeNode(new audio::MonitorSpectralNode(monitorFormat));
 	mBufferPlayerNode >> mMonitorSpectralNode >> ctx->getOutput();;
 	ctx->enable();
+	*/
 	bgColor = Color(0.0, 0.0, 0.0);
 	
 
@@ -249,7 +250,7 @@ void AudioVisualsApp::fileDrop(FileDropEvent event)
 	mMonitorSpectralNode = ctx->makeNode(new audio::MonitorSpectralNode(monitorFormat));
 	mBufferPlayerNode >> mMonitorSpectralNode >> ctx->getOutput();;
 	ctx->enable();
-	
+	songdragged = true;
 	
 }
 
@@ -282,23 +283,12 @@ void AudioVisualsApp::update()
 	std::swap(InitialIndex, FinalIndex);
 
 
-
-
-
-
-
-
-
-
-
-	
-
 	mSpectrumPlot.setBounds(Rectf(40, 40, (float)getWindowWidth() - 40, (float)getWindowHeight() - 40));
-
-	mMagSpectrum = mMonitorSpectralNode->getMagSpectrum();
-	printBinInfo(350);
-	draw();
-	
+	if (songdragged){
+		mMagSpectrum = mMonitorSpectralNode->getMagSpectrum();
+		printBinInfo(350);
+		draw();
+	}
 
 
 }
@@ -308,13 +298,16 @@ void AudioVisualsApp::update()
 
 void AudioVisualsApp::keyDown(KeyEvent event){
 	if (event.getCode() == KeyEvent::KEY_SPACE) {
-		spacebuttonpressed = true;
-		if (mBufferPlayerNode->isEnabled())
-			mBufferPlayerNode->stop();
-		else
-			mBufferPlayerNode->start();
-	}
+		
 
+			spacebuttonpressed = true;
+		if (songdragged){
+			if (mBufferPlayerNode->isEnabled())
+				mBufferPlayerNode->stop();
+			else
+				mBufferPlayerNode->start();
+		}
+	}
 }
 
 
@@ -333,10 +326,10 @@ void AudioVisualsApp::draw()
 	gl::context()->setDefaultShaderVars();
 
 
-	if (!spacebuttonpressed){
-		mTextureFont->drawString("Audio Visuals by Talha Ali. Built on the open source library Cinder", vec2(10.0f, 40.0f));
+	if (!songdragged){
+		mTextureFont->drawString("Audio Visuals by Talha Ali. Built on the open source library Cinder. Particle position and color is inspired by Cinder sample.", vec2(10.0f, 40.0f));
 
-		mTextureFont->drawString("Drag and drop any music file (.mp3, .mp4, etc.) and press the space button or just press the space button to hear 'Chop Suey Instrumental' by System of a Down", vec2(10.0f, 70.0f));
+		mTextureFont->drawString("Drag and drop any music file (.mp3, .mp4, etc.) and press the space button or just press the space button.", vec2(10.0f, 70.0f));
 
 	
 	}
