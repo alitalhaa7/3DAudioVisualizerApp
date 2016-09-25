@@ -329,7 +329,7 @@ void AudioVisualsApp::draw()
 	if (!songdragged){
 		mTextureFont->drawString("Audio Visuals by Talha Ali. Built on the open source library Cinder. Particle position and color is inspired by Cinder sample.", vec2(10.0f, 40.0f));
 
-		mTextureFont->drawString("Drag and drop any music file (.mp3, .mp4, etc.) and press the space button or just press the space button.", vec2(10.0f, 70.0f));
+		mTextureFont->drawString("Drag and drop any music file (.mp3, .mp4, etc.) and press the space button.", vec2(10.0f, 70.0f));
 
 	
 	}
