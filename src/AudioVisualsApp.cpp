@@ -3,13 +3,14 @@ Made By Talha Ali
 Using C++, OpenGL and GLSL.
 Built upon open source library, Cinder.
 
-Particle placement is based off of sample found within Cinder library. I've added audio detection, music analysis 
+Particle placement is based off of sample found within Cinder library. I've added audio detection, music analysis
 and particle movement based on music.
 
 19-09-2016
 
 */
 
+#include <cmath>
 
 
 #include "cinder/app/App.h"
@@ -48,25 +49,22 @@ using namespace ci::gl;
 
 
 
-#if defined( CINDER_GL_ES ) 
-const int MaxParticles = 600e2;
-#else
-const int MaxParticles = 600e3;
-#endif
+
+const int MaxParticles = 100e3;
 
 
 
 
 
 class AudioVisualsApp : public App {
-  public:
+public:
 	void setup() override;
 	void resize() override;
 	void update() override;
 	void draw() override;
 	void animate();
 	void drawLabels();
-	void printBinInfo(int mouseX);
+	void printBinInfo();
 	void keyDown(KeyEvent event);
 
 	void fileDrop(FileDropEvent event) override;
@@ -87,15 +85,11 @@ class AudioVisualsApp : public App {
 	geom::Sphere		sphere;
 	gl::BatchRef		mSphere;
 	vec3 offset;
-	Color sphereColor;
-	vec3 scalefactor;	
-	int mouseX;
-	float time;
 
 	Color bgColor;
 
 
-	bool spacebuttonpressed=false;
+	bool spacebuttonpressed = false;
 	bool songdragged = false;
 
 private:
@@ -106,7 +100,7 @@ private:
 	gl::VboRef		pbuffer[2];
 
 	std::uint32_t	InitialIndex = 0;
-	std::uint32_t	FinalIndex= 1;
+	std::uint32_t	FinalIndex = 1;
 
 	float			mMouseForce = 0.0f;
 	vec3			mMousePos = vec3(0, 0, 0);
@@ -142,20 +136,19 @@ void AudioVisualsApp::setup()
 	mFont = Font("Arial", 22);
 
 	mTextureFont = gl::TextureFont::create(mFont);
-
 	vector<ParticleData> particles;
 	particles.assign(MaxParticles, ParticleData());
-    float azimuth = 256.0f * M_PI / particles.size();
+	float azimuth = 256.0f * M_PI / particles.size();
 	float inclination = M_PI / particles.size();
 	float radius = 200.0f;
 	for (int i = 0; i < particles.size(); ++i)
-	{	
+	{
 		float x = radius * sin(inclination * i) * cos(azimuth * i);
 		float y = radius * cos(inclination * i);
 		float z = radius * sin(inclination * i) * sin(azimuth * i);
 
 		auto &p = particles.at(i);
-		p.position = vec3(getWindowCenter() + vec2(0.0f, 40.0f), 0.0f) +vec3(x, y, z);
+		p.position = vec3(getWindowCenter() + vec2(0.0f, 40.0f), 0.0f) + vec3(x, y, z);
 		p.home = p.position;
 		p.particleposition = p.home;
 		p.damping = Rand::randFloat(0.965f, 0.985f);
@@ -169,7 +162,7 @@ void AudioVisualsApp::setup()
 	mRenderProg = gl::getStockShader(gl::ShaderDef().color());
 
 	for (int i = 0; i < 2; ++i)
-	{	
+	{
 		mAttributes[i] = gl::Vao::create();
 		gl::ScopedVao vao(mAttributes[i]);
 
@@ -186,48 +179,21 @@ void AudioVisualsApp::setup()
 		gl::vertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(ParticleData), (const GLvoid*)offsetof(ParticleData, damping));
 	}
 
-	
 
-#if defined( CINDER_GL_ES_3 )
-	mUpdateProg = gl::GlslProg::create(gl::GlslProg::Format().vertex(loadAsset("particleUpdate_es3.vs"))
-		.fragment(loadAsset("no_op_es3.fs"))
-#else
+
+
 	mUpdateProg = gl::GlslProg::create(gl::GlslProg::Format().vertex(loadAsset("particleUpdate.vs"))
-#endif
 		.feedbackFormat(GL_INTERLEAVED_ATTRIBS)
 		.feedbackVaryings({ "position", "pposition", "home", "color", "damping" })
 		.attribLocation("iPosition", 0)
 		.attribLocation("iColor", 1)
 		.attribLocation("iPPosition", 2)
 		.attribLocation("iHome", 3)
-		.attribLocation("iDamping", 4)
+		.attribLocation("iDamping",4)
 		);
 
-	
-
-
-
-
-
-
-
-
-	auto ctx = audio::Context::master();
-	sourceFile = audio::load(loadResource(music), ctx->getSampleRate());
-
-	//audio::BufferRef buffer = sourceFile->loadBuffer();
-	/*mBufferPlayerNode = ctx->makeNode(new audio::BufferPlayerNode(buffer));
-
-
-
-
-	auto monitorFormat = audio::MonitorSpectralNode::Format().fftSize(2048).windowSize(1024);
-	mMonitorSpectralNode = ctx->makeNode(new audio::MonitorSpectralNode(monitorFormat));
-	mBufferPlayerNode >> mMonitorSpectralNode >> ctx->getOutput();;
-	ctx->enable();
-	*/
 	bgColor = Color(0.0, 0.0, 0.0);
-	
+
 
 }
 
@@ -251,7 +217,7 @@ void AudioVisualsApp::fileDrop(FileDropEvent event)
 	mBufferPlayerNode >> mMonitorSpectralNode >> ctx->getOutput();;
 	ctx->enable();
 	songdragged = true;
-	
+
 }
 
 
@@ -266,11 +232,11 @@ void AudioVisualsApp::resize(){
 
 void AudioVisualsApp::update()
 {
-	
+
 	gl::ScopedGlslProg prog(mUpdateProg);
 	gl::ScopedState rasterizer(GL_RASTERIZER_DISCARD, true);	// turn off fragment stage
 	mUpdateProg->uniform("Disturbance", Force);
-	mUpdateProg->uniform("DisturbancePosition", glm::ballRand(180.0f)+vec3(getWindowCenter().x,getWindowCenter().y,0));
+	mUpdateProg->uniform("DisturbancePosition", glm::ballRand(180.0f) + vec3(getWindowCenter().x, getWindowCenter().y, 0));
 
 	gl::ScopedVao source(mAttributes[InitialIndex]);
 	gl::bindBufferBase(GL_TRANSFORM_FEEDBACK_BUFFER, 0, pbuffer[FinalIndex]);
@@ -286,7 +252,7 @@ void AudioVisualsApp::update()
 	mSpectrumPlot.setBounds(Rectf(40, 40, (float)getWindowWidth() - 40, (float)getWindowHeight() - 40));
 	if (songdragged){
 		mMagSpectrum = mMonitorSpectralNode->getMagSpectrum();
-		printBinInfo(350);
+		printBinInfo();
 		draw();
 	}
 
@@ -298,9 +264,9 @@ void AudioVisualsApp::update()
 
 void AudioVisualsApp::keyDown(KeyEvent event){
 	if (event.getCode() == KeyEvent::KEY_SPACE) {
-		
 
-			spacebuttonpressed = true;
+
+		spacebuttonpressed = true;
 		if (songdragged){
 			if (mBufferPlayerNode->isEnabled())
 				mBufferPlayerNode->stop();
@@ -320,7 +286,6 @@ void AudioVisualsApp::draw()
 	gl::setMatricesWindowPersp(getWindowSize());
 	gl::enableDepthRead();
 	gl::enableDepthWrite();
-	
 	gl::ScopedGlslProg render(mRenderProg);
 	gl::ScopedVao vao(mAttributes[InitialIndex]);
 	gl::context()->setDefaultShaderVars();
@@ -331,7 +296,7 @@ void AudioVisualsApp::draw()
 
 		mTextureFont->drawString("Drag and drop any music file (.mp3, .mp4, etc.) and press the space button.", vec2(10.0f, 70.0f));
 
-	
+
 	}
 
 	gl::drawArrays(GL_POINTS, 0, MaxParticles);
@@ -341,32 +306,14 @@ void AudioVisualsApp::draw()
 
 
 
-void AudioVisualsApp::printBinInfo(int mouseX)
+void AudioVisualsApp::printBinInfo()
 {
-	size_t numBins = mMonitorSpectralNode->getFftSize() / 2;
-	size_t bin = std::min(numBins - 1, size_t((numBins * (mouseX - mSpectrumPlot.getBounds().x1)) / mSpectrumPlot.getBounds().getWidth()));
+	size_t numBins = mMonitorSpectralNode->getFftSize();
+	size_t bin = std::min(numBins - 1, size_t((numBins * (mSpectrumPlot.getBounds().x1)) / mSpectrumPlot.getBounds().getWidth()));
 
-	float binFreqWidth = mMonitorSpectralNode->getFreqForBin(1) - mMonitorSpectralNode->getFreqForBin(0);
-	float freq = mMonitorSpectralNode->getFreqForBin(bin);
 	float mag = audio::linearToDecibel(mMagSpectrum[bin]);
-	if (mag > maxmag){
-		maxmag = mag;
-	}
-	if (mag < minmag){
-		minmag = mag;
+	Force = mag*100;
 
-	}
-
-	float r = (mag / maxmag);
-	
-	sphereColor = Color(CM_RGB, r, 0.0, 0.0);
-	scalefactor = vec3(r);
-
-
-
-	Force = mag*8;
-	
-	
 }
 
 CINDER_APP(AudioVisualsApp, RendererGl(RendererGl::Options().msaa(8)), [](App::Settings *settings) {
